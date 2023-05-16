@@ -487,7 +487,7 @@ new (function() {
 				self.cleanTable();
 				self.parse();
 			} );
-			$("#button-szabalygeneralo").click( function() {
+			$("#button-generate-rule").click( function() {
 				self.genRule();
 			} );
 		}
