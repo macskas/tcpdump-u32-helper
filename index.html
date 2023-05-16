@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>TCPDUMP u32 helper</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="google" content="notranslate">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+    <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="tcpdump.js"></script>
+    <style>
+        BODY{ font-size: 12px; font-family: Verdana, Helvetica, Tahoma, Arial, sans-serif; }
+        TABLE{ font-size: 12px; font-family: Verdana, Helvetica, Tahoma, Arial, sans-serif; }
+        #table-iptables{ margin-top: 30px; border: 1px solid black;}
+        .input-container{
+            width: 550px;
+        }
+        #textarea-tcpdump{
+            border: 1px solid #222;
+            padding: 0;
+            margin: 5px 0 5px 0;
+            width: 550px;
+            height: 180px;
+        }
+        .button-testdata{
+            color: #333;
+            font-style: italic;
+        }
+        .th-1, .ti-1{ width: 120px; text-align: left; padding: 3px; }
+        .th-2, .ti-2{ width: 120px; text-align: right; padding: 3px; }
+        .th-3, .ti-3{ width: 80px; text-align: right; padding: 3px; }
+        .th{ font-weight: bold; text-transform: uppercase; }
+        .ti-1{ color: red; }
+        .ti-2{ color: blue; }
+        .ti-1,.ti-2,.ti-3{ line-height: 20px; }
+        .float-left{ float: left; }
+        .float-right{ float: right; }
+
+        .table-ipv4{ border-collapse: collapse; width: 550px; border: 1px solid black; }
+        .table-tcp{ border-collapse: collapse; width: 550px; border: 1px solid black; }
+        .table-udp{ border-collapse: collapse; width: 550px; border: 1px solid black; }
+
+        .table-tcp TD{ border: 1px solid black; text-align: center; }
+        .table-udp TD{ border: 1px solid black; text-align: center; }
+        .table-ipv4 TD{ border: 1px solid black; text-align: center; }
+
+        .table-tcp-header{ font-weight: bold;  }
+        .table-udp-header{ font-weight: bold;  }
+        .table-ipv4-header{ font-weight: bold;  }
+
+        .table-tcp-header TD{ line-height: 16px; background-color: #ddd; }
+        .table-udp-header TD{ line-height: 16px; background-color: #ddd; }
+        .table-ipv4-header TD{ line-height: 40px; background-color: #ddd; }
+
+        .table-tcp-offset{ font-weight: bold; background-color: #ddd; }
+        .table-udp-offset{ font-weight: bold; background-color: #ddd; }
+        .table-ipv4-offset{ font-weight: bold; background-color: #ddd; }
+
+        .tcpipwrapper{ width: 1200px; overflow: hidden; }
+        .tcpipwrapper-left{ float: left; width: 580px; }
+        .tcpipwrapper-right{ float: left; width: 580px; }
+        .clear{ clear: both; }
+        .table-tcp-small TD{ font-size: 9px; width: 12px; font-family: Tahoma, Arial, serif; line-height: 20px;}
+        .table-udp-small TD{ font-size: 9px; width: 12px; font-family: Tahoma, Arial, serif; line-height: 20px;}
+        #parser-message{
+            color: #dd3333;
+        }
+    </style>
+</head>
+<body>
+<div class="input-container">
+    <div class="input-row">copy &amp; paste tcpdump output (tcp/udp) here</div>
+    <div class="input-row">
+	<textarea id="textarea-tcpdump" placeholder=" --- example command ---
+ user@server:~$ sudo tcpdump -n port 11211 -i lo -x
+ --- example output to copy ---
+	0x0000:  4510 003c e248 4000 4006 5a61 7f00 0001
+	0x0010:  7f00 0001 924a 2bcb 1fdb a858 0000 0000
+	0x0020:  a002 ffd7 fe30 0000 0204 ffd7 0402 080a
+	0x0030:  98bf 37c6 0000 0000 0103 0307
+ --- example output to copy ---
+"></textarea>
+    </div>
+    <div class="input-row">
+        <div class="input-button-left float-left">
+            <input type="button" value="tcp test data" data-type="tcp" class="button-testdata"/>
+            <input type="button" value="udp test data" data-type="udp" class="button-testdata"/>
+        </div>
+        <div class="input-button-right float-right">
+            <input type="button" value="parse" id="button-parser"/>
+            <input type="button" value="reset" id="button-reset"/>
+        </div>
+    </div>
+    <div class="clear">&nbsp;</div>
+    <div id="parser-message"></div>
+</div>
+<br/>
+
+<div class="tcpipwrapper">
+    <div class="tcpipwrapper-left">
+        <table class="table-ipv4" border="1" id="table-ipv4">
+            <tr class="table-ipv4-header">
+                <td colspan="8" class="ip-header" style="line-height: 20px;">IP header</td>
+            </tr>
+            <tr class="table-ipv4-header">
+                <td width="3%">offset</td>
+                <td width="12%">0-3</td>
+                <td width="12%">4-7</td>
+                <td width="18%">8-13</td>
+                <td width="6%">14-15</td>
+                <td width="9%">16-18</td>
+                <td width="40%">19-31</td>
+            </tr>
+            <tr>
+                <td class="table-ipv4-offset">0</td>
+                <td id="ip-version" data-help="IP Version"></td>
+                <td id="ip-ihl" data-help="Internet Header Length"></td>
+                <td id="ip-dscp" data-help="ToS"></td>
+                <td id="ip-ecn" data-help="Explicit Congestion Notification"></td>
+                <td colspan="2" id="ip-total-length" data-help="Total Length"></td>
+            </tr>
+            <tr>
+                <td class="table-ipv4-offset">32</td>
+                <td colspan="4" id="ip-identification" data-help="Identification"></td>
+                <td id="ip-flags" data-help="flags"></td>
+                <td id="ip-fragmentoffset" data-help="Fragment Offset"></td>
+            </tr>
+            <tr>
+                <td class="table-ipv4-offset">64</td>
+                <td colspan="2" id="ip-ttl" data-help="Time to Live"></td>
+                <td colspan="2" id="ip-protocol" data-help="Protocol"></td>
+                <td colspan="2" id="ip-checksum" data-help="Header Checksum"></td>
+            </tr>
+            <tr>
+                <td class="table-ipv4-offset">96</td>
+                <td colspan="6" id="ip-src" data-help="Source Address"></td>
+            </tr>
+            <tr>
+                <td class="table-ipv4-offset">128</td>
+                <td colspan="6" id="ip-dst" data-help="Destination Address"></td>
+            </tr>
+            <tr>
+                <td class="table-ipv4-offset">WTF</td>
+                <td colspan="6" id="ip-desc" data-help="HELP">help</td>
+            </tr>
+        </table>
+    </div>
+    <div class="tcpipwrapper-right">
+        <table class="table-tcp" border="1" id="table-tcp">
+            <tr class="table-tcp-header">
+                <td colspan="33" style="line-height: 20px;" class="tcp-header">TCP header</td>
+            </tr>
+            <tr class="table-tcp-header">
+                <td>offset</td>
+                <td colspan="8">0</td>
+                <td colspan="8">1</td>
+                <td colspan="8">2</td>
+                <td colspan="8">3</td>
+            </tr>
+            <tr class="table-tcp-small">
+                <td class="table-tcp-offset">.</td>
+
+                <td>0</td>
+                <td>1</td>
+                <td>2</td>
+                <td>3</td>
+                <td>4</td>
+                <td>5</td>
+                <td>6</td>
+                <td>7</td>
+
+                <td>8</td>
+                <td>9</td>
+                <td>10</td>
+                <td>11</td>
+                <td>12</td>
+                <td>13</td>
+                <td>14</td>
+                <td>15</td>
+
+                <td>16</td>
+                <td>17</td>
+                <td>18</td>
+                <td>19</td>
+                <td>20</td>
+                <td>21</td>
+                <td>22</td>
+                <td>23</td>
+
+                <td>24</td>
+                <td>25</td>
+                <td>26</td>
+                <td>27</td>
+                <td>28</td>
+                <td>29</td>
+                <td>30</td>
+                <td>31</td>
+            </tr>
+            <tr>
+                <td class="table-tcp-offset">0</td>
+                <td colspan="16" id="tcp-src" data-help="Source Port"></td>
+                <td colspan="16" id="tcp-dst" data-help="Destination Port"></td>
+            </tr>
+            <tr>
+                <td class="table-tcp-offset">32</td>
+                <td colspan="32" id="tcp-seq" data-help="Sequence number"></td>
+            </tr>
+            <tr>
+                <td class="table-tcp-offset">64</td>
+                <td colspan="32" id="tcp-ackfull" data-help="Acknowledgment number (if ACK set)"></td>
+            </tr>
+            <tr>
+                <td class="table-tcp-offset">96</td>
+                <td colspan="4" id="tcp-doff" data-help="Data Offset"></td>
+                <td colspan="3" id="tcp-reserved" data-help="Reserved (zero)"></td>
+                <td id="tcp-ns"		data-help="ECN-nonce concealment protection"></td>
+                <td id="tcp-cwr"	data-help="Congestion Window Reduced"></td>
+                <td id="tcp-ece"	data-help="ECN-Echo indicates"></td>
+                <td id="tcp-urg"	data-help="Urgent pointer field is significant"></td>
+                <td id="tcp-ack"	data-help="Acknowledgment field is significant"></td>
+                <td id="tcp-psh"	data-help="push the buffered data"></td>
+                <td id="tcp-rst"	data-help="Reset the connection"></td>
+                <td id="tcp-syn"	data-help="Synchronize sequence numbers"></td>
+                <td id="tcp-fin"	data-help="No more data from sender"></td>
+                <td colspan="16" id="tcp-window" data-help="Window Size"></td>
+            </tr>
+            <tr>
+                <td class="table-tcp-offset">128</td>
+                <td colspan="16" id="tcp-checksum" data-help="Checksum"></td>
+                <td colspan="16" id="tcp-urgent"   data-help="Urgent Pointer"></td>
+            </tr>
+            <tr>
+                <td class="table-tcp-offset">WTF</td>
+                <td colspan="32" id="tcp-desc"   data-help="HELP">help</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="clear" slot="margin-bottom: 20px;">&nbsp;</div>
+    <div class="tcpipwrapper-right">
+        <table class="table-udp" border="1" id="table-udp">
+            <tr class="table-udp-header">
+                <td colspan="33" style="line-height: 20px;" class="udp-header">UDP header</td>
+            </tr>
+            <tr class="table-udp-header">
+                <td>offset</td>
+                <td colspan="8">0</td>
+                <td colspan="8">1</td>
+                <td colspan="8">2</td>
+                <td colspan="8">3</td>
+            </tr>
+            <tr class="table-udp-small">
+                <td class="table-udp-offset">.</td>
+
+                <td>0</td>
+                <td>1</td>
+                <td>2</td>
+                <td>3</td>
+                <td>4</td>
+                <td>5</td>
+                <td>6</td>
+                <td>7</td>
+
+                <td>8</td>
+                <td>9</td>
+                <td>10</td>
+                <td>11</td>
+                <td>12</td>
+                <td>13</td>
+                <td>14</td>
+                <td>15</td>
+
+                <td>16</td>
+                <td>17</td>
+                <td>18</td>
+                <td>19</td>
+                <td>20</td>
+                <td>21</td>
+                <td>22</td>
+                <td>23</td>
+
+                <td>24</td>
+                <td>25</td>
+                <td>26</td>
+                <td>27</td>
+                <td>28</td>
+                <td>29</td>
+                <td>30</td>
+                <td>31</td>
+            </tr>
+            <tr>
+                <td class="table-udp-offset">0</td>
+                <td colspan="16" id="udp-src" data-help="Source Port"></td>
+                <td colspan="16" id="udp-dst" data-help="Destination Port"></td>
+            </tr>
+            <tr>
+                <td class="table-udp-offset">32</td>
+                <td colspan="16" id="udp-length" data-help="Length"></td>
+                <td colspan="16" id="udp-checksum" data-help="Checksum"></td>
+            </tr>
+            <tr>
+                <td class="table-udp-offset">WTF</td>
+                <td colspan="32" id="udp-desc"   data-help="HELP">help</td>
+            </tr>
+        </table>
+    </div>
+    <div class="clear"></div>
+</div>
+<table id="table-iptables" cellspacing="0" cellpadding="0">
+    <tr>
+        <td colspan="3" align="center" style="border-bottom: 1px solid black; padding: 3px;">
+            <input type="button" style="width: 100%;" value="Generate rule" id="button-szabalygeneralo" />
+        </td>
+    </tr>
+    <tr class="th">
+        <td class="th-1">type</td>
+        <td class="th-2">value</td>
+        <td class="th-3">need</td>
+    </tr>
+</table>
+<br/>
+<br/>
+OUTPUT RULE:<br/>
+<textarea cols="100" rows="4" id="rule"></textarea>
+</body>
+</html>
